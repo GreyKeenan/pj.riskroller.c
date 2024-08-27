@@ -1,7 +1,8 @@
 #include <stdlib.h>
 #include <stdint.h>
-#include <stdio.h>
 #include <stdbool.h>
+#include <stdio.h>
+#include <limits.h>
 
 struct xorshiftr128plus_state {
 	uint64_t x, y;
@@ -39,7 +40,6 @@ static inline uint64_t xorshiftr128plus(struct xorshiftr128plus_state *state) {
 	return x;
 }
 
-
 uint8_t roll() {
 	uint64_t randomNumber = 0;
 	while (1) {
@@ -48,20 +48,183 @@ uint8_t roll() {
 	}
 }
 
-int main(int argc, char **argv) {
 
-	randomState = seed(1);
-	printf("randomState post-seed(): %lu, %lu\n", randomState.x, randomState.y);
 
-	uint64_t rollCounts[6] = {0};
+uint16_t stringToInt16(const char *string, uint16_t *destination) {
+	int i = 0; //TODO err if wraps
+	char c = 0;
+	uint16_t lastTotal = 0;
+	uint16_t total = 0;
+	while (1) {
+		c = string[i];
+		if (c == '\0') {
+			break;
+		}
+		if (i == INT_MAX) {
+			return 3;
+		}
+		if (c < '0' || '9' < c) {
+			*destination = total;
+			return 1;
+		}
 
-	for (int i = 0; i < 1000000000; ++i) {
-		rollCounts[roll()]++;
+		lastTotal = total;
+
+		total *= 10;
+		total += c - '0';
+
+		if (total < lastTotal) {
+			return 2;
+		}
+
+		i++;
 	}
 
-	for (int i = 0; i < 6; ++i) {
-		printf("rollCounts[%d]: %lu\n", i, rollCounts[i]);
+	*destination = total;
+	return 0;
+}
+int processArguments(int argc, const char **argv, uint16_t *aggressorDestination, uint16_t *defenderDestination) {
+	if (argc < 2) return 1;
+
+	if (stringToInt16(argv[1], aggressorDestination)) return 2;
+
+	if (argc < 3) {
+		*defenderDestination = *aggressorDestination;
+		return 0;
 	}
+
+	if (stringToInt16(argv[2], defenderDestination)) return 3;
+
+	return 0;
+}
+
+
+void sortRolls(uint8_t rollCount, uint8_t *rolls) {
+	for (int j = rollCount; j > 0; --j) {
+		for (int i = 1; i < j; ++i) {
+			if (rolls[i - 1] < rolls[i]) {
+				rolls[i] += rolls[i - 1];
+				rolls[i - 1] = rolls[i] - rolls[i - 1];
+				rolls[i] -= rolls[i - 1];
+			}
+		}
+	}
+}
+
+bool doBattle(uint16_t aggressor, uint16_t defender) {
+
+	printf("\nAttacker: %d /vs/ Defender: %d\n", aggressor, defender);
+
+	uint8_t aggressorRolls[3] = {0};
+	uint8_t defenderRolls[2] = {0};
+
+	uint8_t aggressorRollCount = 0;
+	uint8_t defenderRollCount = 0;
+	while (1) {
+		switch (aggressor) {
+			case 0: 
+				printf("Defender wins with (%d) remaining!\n", defender);
+				return false;
+			case 1:
+				aggressorRollCount = 1;
+				break;
+			case 2:
+				aggressorRollCount = 2;
+				break;
+			default:
+				aggressorRollCount = 3;
+				break;
+		}
+		switch (defender) {
+			case 0: 
+				printf("Attacker wins with (%d) remaining!\n", aggressor);
+				return true;
+			case 1:
+				defenderRollCount = 1;
+				break;
+			default:
+				if (aggressorRollCount == 1) {
+					defenderRollCount = 1;
+					break;
+				}
+				defenderRollCount = 2;
+				break;
+		}
+		
+		for (int i = 0; i < aggressorRollCount; ++i) {
+			aggressorRolls[i] = roll();
+		}
+		for (int i = 0; i < defenderRollCount; ++i) {
+			defenderRolls[i] = roll();
+		}
+		sortRolls(aggressorRollCount, aggressorRolls);
+		sortRolls(defenderRollCount, defenderRolls);
+
+		
+		int8_t aggressorLost = 0;
+		int8_t defenderLost = 0;
+
+		for (int i = 0; i < defenderRollCount; ++i) {
+			if (aggressorRolls[i] > defenderRolls[i]) {
+				defender--;
+				defenderLost++;
+				continue;
+			}
+
+			aggressor--;
+			aggressorLost++;
+			continue;
+		}
+
+		///*
+		printf("( %d, %c, %c ) /vs/ ( %d, %c ) -> -%d\t-%d\n",
+			aggressorRolls[0] + 1,
+			(aggressorRollCount > 1)? aggressorRolls[1] + '1' : 'X',
+			(aggressorRollCount > 2)? aggressorRolls[2] + '1' : 'X',
+			defenderRolls[0] + 1,
+			(defenderRollCount > 1)? defenderRolls[1] + '1' : 'X',
+
+			aggressorLost,
+			defenderLost
+		);
+		// */
+		/*
+		printf("\t%dv%d\n\t%cv%c\n\t%c\t-> (%d) (%d)\n", 
+			aggressorRolls[0] + 1,
+			defenderRolls[0] + 1,
+
+			(aggressorRollCount > 1)? aggressorRolls[1] + '1' : 'X',
+			(defenderRollCount > 1)? defenderRolls[1] + '1' : 'X',
+
+			(aggressorRollCount > 2)? aggressorRolls[2] + '1' : 'X',
+
+			aggressor,
+			defender
+		);
+		// */
+		
+	}
+}
+
+
+int main(int argc, const char **argv) {
+
+	randomState = seed(1); //TODO
+
+	uint16_t aggressor = 0;
+	uint16_t defender = 0;
+
+	switch (processArguments(argc, argv, &aggressor, &defender)) {
+		case 0: break;
+		case 1: 
+		case 2:
+		case 3:
+			printf("Unable to parse cli arguments.\n");
+			return 1;
+		default: printf("Unrecognized processArguments() return value.\n");
+	}
+
+	doBattle(aggressor, defender);
 
 	return 0;
 }
