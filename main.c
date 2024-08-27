@@ -3,6 +3,7 @@
 #include <stdbool.h>
 #include <stdio.h>
 #include <limits.h>
+#include <time.h>
 
 struct xorshiftr128plus_state {
 	uint64_t x, y;
@@ -40,7 +41,7 @@ static inline uint64_t xorshiftr128plus(struct xorshiftr128plus_state *state) {
 	return x;
 }
 
-uint8_t roll() {
+uint8_t roll(void) {
 	uint64_t randomNumber = 0;
 	while (1) {
 		randomNumber = xorshiftr128plus(&randomState) & 0x07;
@@ -113,7 +114,7 @@ void sortRolls(uint8_t rollCount, uint8_t *rolls) {
 
 bool doBattle(uint16_t aggressor, uint16_t defender) {
 
-	printf("\nAttacker: %d /vs/ Defender: %d\n", aggressor, defender);
+	printf("Attacker: %d /vs/ Defender: %d\n", aggressor, defender);
 
 	uint8_t aggressorRolls[3] = {0};
 	uint8_t defenderRolls[2] = {0};
@@ -125,7 +126,7 @@ bool doBattle(uint16_t aggressor, uint16_t defender) {
 			case 0: 
 				printf("Defender wins with (%d) remaining!\n", defender);
 				return false;
-			case 1:
+			case 1: //TODO retreat option at certain amount ??
 				aggressorRollCount = 1;
 				break;
 			case 2:
@@ -166,17 +167,18 @@ bool doBattle(uint16_t aggressor, uint16_t defender) {
 
 		for (int i = 0; i < defenderRollCount; ++i) {
 			if (aggressorRolls[i] > defenderRolls[i]) {
-				defender--;
+				//defender--;
 				defenderLost++;
 				continue;
 			}
 
-			aggressor--;
+			//aggressor--;
 			aggressorLost++;
 			continue;
 		}
+		aggressor -= aggressorLost;
+		defender -= defenderLost;
 
-		///*
 		printf("( %d, %c, %c ) /vs/ ( %d, %c ) -> -%d\t-%d\n",
 			aggressorRolls[0] + 1,
 			(aggressorRollCount > 1)? aggressorRolls[1] + '1' : 'X',
@@ -187,21 +189,6 @@ bool doBattle(uint16_t aggressor, uint16_t defender) {
 			aggressorLost,
 			defenderLost
 		);
-		// */
-		/*
-		printf("\t%dv%d\n\t%cv%c\n\t%c\t-> (%d) (%d)\n", 
-			aggressorRolls[0] + 1,
-			defenderRolls[0] + 1,
-
-			(aggressorRollCount > 1)? aggressorRolls[1] + '1' : 'X',
-			(defenderRollCount > 1)? defenderRolls[1] + '1' : 'X',
-
-			(aggressorRollCount > 2)? aggressorRolls[2] + '1' : 'X',
-
-			aggressor,
-			defender
-		);
-		// */
 		
 	}
 }
@@ -209,7 +196,10 @@ bool doBattle(uint16_t aggressor, uint16_t defender) {
 
 int main(int argc, const char **argv) {
 
-	randomState = seed(1); //TODO
+	uint64_t s = (uint64_t)time(NULL);
+	randomState = seed(s);
+	printf("\nseed: %lu\n", s);
+	//printf("randomState post-seed: %lu, %lu\n", randomState.x, randomState.y);
 
 	uint16_t aggressor = 0;
 	uint16_t defender = 0;
@@ -224,7 +214,9 @@ int main(int argc, const char **argv) {
 		default: printf("Unrecognized processArguments() return value.\n");
 	}
 
+	printf("\n");
 	doBattle(aggressor, defender);
+	printf("\n");
 
 	return 0;
 }
