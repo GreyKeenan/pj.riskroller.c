@@ -54,8 +54,7 @@ uint8_t roll(void) {
 uint16_t stringToInt16(const char *string, uint16_t *destination) {
 	int i = 0; //TODO err if wraps
 	char c = 0;
-	uint16_t lastTotal = 0;
-	uint16_t total = 0;
+	uint64_t total = 0;
 	while (1) {
 		c = string[i];
 		if (c == '\0') {
@@ -69,12 +68,10 @@ uint16_t stringToInt16(const char *string, uint16_t *destination) {
 			return 1;
 		}
 
-		lastTotal = total;
-
 		total *= 10;
 		total += c - '0';
 
-		if (total < lastTotal) {
+		if (total > 65535) {
 			return 2;
 		}
 
@@ -114,6 +111,9 @@ void sortRolls(uint8_t rollCount, uint8_t *rolls) {
 
 bool doBattle(uint16_t aggressor, uint16_t defender) {
 
+	const uint16_t aggressorOrig = aggressor;
+	const uint16_t defenderOrig = defender;
+
 	printf("Attacker: %d /vs/ Defender: %d\n", aggressor, defender);
 
 	uint8_t aggressorRolls[3] = {0};
@@ -124,6 +124,7 @@ bool doBattle(uint16_t aggressor, uint16_t defender) {
 	while (1) {
 		switch (aggressor) {
 			case 0: 
+				printf("\nAttacker: %d /vs/ Defender: %d\n", aggressorOrig, defenderOrig);
 				printf("Defender wins with (%d) remaining!\n", defender);
 				return false;
 			case 1: //TODO retreat option at certain amount ??
@@ -138,6 +139,7 @@ bool doBattle(uint16_t aggressor, uint16_t defender) {
 		}
 		switch (defender) {
 			case 0: 
+				printf("\nAttacker: %d /vs/ Defender: %d\n", aggressorOrig, defenderOrig);
 				printf("Attacker wins with (%d) remaining!\n", aggressor);
 				return true;
 			case 1:
@@ -209,9 +211,11 @@ int main(int argc, const char **argv) {
 		case 1: 
 		case 2:
 		case 3:
-			printf("Unable to parse cli arguments.\n");
+			printf("Unable to parse cli arguments.\n\n");
 			return 1;
-		default: printf("Unrecognized processArguments() return value.\n");
+		default:
+			printf("Unrecognized processArguments() return value.\n\n");
+			return 1;
 	}
 
 	printf("\n");
